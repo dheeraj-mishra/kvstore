@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"strings"
 )
 
 type ServerInfo struct {
@@ -12,7 +14,7 @@ type ServerInfo struct {
 	Server net.Listener
 }
 
-func NewServer(ip string, port int16) *ServerInfo {
+func NewServer(ip string, port int16) (*ServerInfo, func(net.Conn)) {
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
@@ -24,7 +26,7 @@ func NewServer(ip string, port int16) *ServerInfo {
 	server, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("error while dialing tcp, addr:%s, %s", addr, err.Error())
-		return nil
+		return nil, nil
 	}
 
 	log.Printf("tcp server started on %s", addr)
@@ -33,6 +35,33 @@ func NewServer(ip string, port int16) *ServerInfo {
 		IP:     ip,
 		Port:   port,
 		Server: server,
+	}, handleconn
+}
+
+func handleconn(c net.Conn) {
+	defer c.Close()
+	cmsg := make([]byte, 1024)
+	for {
+		readlen, err := c.Read(cmsg)
+		if err == io.EOF {
+			log.Printf("client connection closed: %s", c.RemoteAddr())
+			break
+		} else if err != nil {
+			log.Printf("msg read: %s", string(cmsg))
+		}
+
+		var resp string
+		if strings.EqualFold(string(cmsg[:readlen]), "ping") {
+			resp = "PONG"
+		} else {
+			resp = "invalid command,as of now only 'ping' is supported in this version :)"
+		}
+
+		if _, err := c.Write([]byte(resp)); err != nil {
+			log.Printf("writing response to client %s failed: %s", c.RemoteAddr(), err.Error())
+			continue
+		}
+
 	}
 }
 

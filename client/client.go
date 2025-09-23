@@ -47,6 +47,9 @@ func main() {
 		cmd = strings.TrimSpace(cmd)
 		if cmd == "" {
 			continue
+		} else if cmd == "exit" {
+			fmt.Println("kvstore-cli exited :)")
+			os.Exit(0)
 		}
 
 		if _, err := ci.Client.Write([]byte(cmd)); err != nil {
