@@ -20,4 +20,4 @@ Clone this repo:
 ```bash
 git clone https://github.com/dheeraj-mishra/kvstore.git
 cd kvstore
-make build
+make run
