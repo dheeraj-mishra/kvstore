@@ -24,7 +24,7 @@ func main() {
 	if len(os.Args) == 1 {
 		ci.IP = "127.0.0.1"
 		ci.Port = 4455
-	} else if len(os.Args) == 2 {
+	} else if len(os.Args) == 3 {
 		ci.IP = os.Args[1]
 		port, _ := strconv.Atoi(os.Args[2])
 		ci.Port = int16(port)

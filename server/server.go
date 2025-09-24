@@ -3,9 +3,9 @@ package server
 import (
 	"fmt"
 	"io"
+	"kvstore/handlers"
 	"log"
 	"net"
-	"strings"
 )
 
 type ServerInfo struct {
@@ -14,7 +14,7 @@ type ServerInfo struct {
 	Server net.Listener
 }
 
-func NewServer(ip string, port int16) (*ServerInfo, func(net.Conn)) {
+func NewServer(ip string, port int16) (*ServerInfo, func(net.Conn, *handlers.RequestHandlers)) {
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
@@ -38,7 +38,7 @@ func NewServer(ip string, port int16) (*ServerInfo, func(net.Conn)) {
 	}, handleconn
 }
 
-func handleconn(c net.Conn) {
+func handleconn(c net.Conn, rh *handlers.RequestHandlers) {
 	defer c.Close()
 	cmsg := make([]byte, 1024)
 	for {
@@ -50,14 +50,8 @@ func handleconn(c net.Conn) {
 			log.Printf("msg read: %s", string(cmsg))
 		}
 
-		var resp string
-		if strings.EqualFold(string(cmsg[:readlen]), "ping") {
-			resp = "PONG"
-		} else {
-			resp = "invalid command,as of now only 'ping' is supported in this version :)"
-		}
-
-		if _, err := c.Write([]byte(resp)); err != nil {
+		rh.Command = string(cmsg[:readlen])
+		if _, err := c.Write([]byte(rh.Process())); err != nil {
 			log.Printf("writing response to client %s failed: %s", c.RemoteAddr(), err.Error())
 			continue
 		}
@@ -65,8 +59,9 @@ func handleconn(c net.Conn) {
 	}
 }
 
-func (si *ServerInfo) Start(handleconn func(net.Conn)) {
+func (si *ServerInfo) Start(handleconn func(net.Conn, *handlers.RequestHandlers)) {
 	for {
+		rh := handlers.NewRequestHandler()
 		conn, err := si.Server.Accept()
 		if err != nil {
 			log.Printf("error while accepting TCP connection on sever: %s", err.Error())
@@ -74,6 +69,6 @@ func (si *ServerInfo) Start(handleconn func(net.Conn)) {
 		_ = conn
 
 		log.Printf("client connected on server, ip:%s", conn.RemoteAddr().String())
-		handleconn(conn)
+		go handleconn(conn, rh)
 	}
 }
